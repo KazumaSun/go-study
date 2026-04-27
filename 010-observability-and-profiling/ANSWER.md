@@ -1,26 +1,37 @@
-# 010 正解例
+# 010 正解例（課題別）
+
+## 課題1: 構造化ログ
 
 ```go
-package main
+logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+logger.Info("request", "path", "/todos", "status", 200, "duration_ms", 12)
+```
 
-import (
-	"log/slog"
-	"net/http"
-	"os"
-	"time"
-)
+## 課題2: メトリクス出力
 
-func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+```go
+var reqCount atomic.Int64
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/work", func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		time.Sleep(50 * time.Millisecond)
-		logger.Info("request handled", "path", r.URL.Path, "duration_ms", time.Since(start).Milliseconds())
-		w.WriteHeader(http.StatusOK)
-	})
-
-	_ = http.ListenAndServe(":8080", mux)
+func handler(w http.ResponseWriter, r *http.Request) {
+	reqCount.Add(1)
+	w.WriteHeader(http.StatusOK)
 }
+
+func metrics(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "requests_total %d\n", reqCount.Load())
+}
+```
+
+## 課題3: pprof導入
+
+```go
+import _ "net/http/pprof"
+
+go func() {
+	_ = http.ListenAndServe(":6060", nil)
+}()
+```
+
+```bash
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=10
 ```
